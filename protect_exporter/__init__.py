@@ -35,8 +35,14 @@ flags.register_validator('url',
                          message='url must be set',
                          flag_values=FLAGS)
 
+# Metrics related to the exporter itself
 REQUEST_TIME = Summary('data_retrieve_seconds', 'Time spent collecting the data')
 PROCESS_TIME = Summary('data_processing_seconds', 'Time spent mangling the data')
+
+# Protect metrics
+PREFIX = 'protect_'
+NVR_INFO = Gauge(PREFIX + 'nvr_info', 'General NVR information', ['version', 'mac', 'host', 'name', 'firmware'])
+
 
 @REQUEST_TIME.time()
 async def get_data(session):
@@ -45,7 +51,16 @@ async def get_data(session):
 @PROCESS_TIME.time()
 async def extract_metrics(data):
     json = await data.json()
-    print(json)
+    nvr = json['nvr']
+
+    # NVR info metrics
+    NVR_INFO.labels(
+            version=nvr['version'],
+            mac=nvr['mac'],
+            host=nvr['host'],
+            name=nvr['name'],
+            firmware=nvr['firmwareVersion']
+            ).set(1)
 
 
 async def looper(interval):
