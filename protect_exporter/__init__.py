@@ -42,7 +42,16 @@ PROCESS_TIME = Summary('data_processing_seconds', 'Time spent mangling the data'
 # Protect metrics
 PREFIX = 'protect_'
 NVR_INFO = Gauge(PREFIX + 'nvr_info', 'General NVR information', ['version', 'mac', 'host', 'name', 'firmware'])
+NVR_CPU_LOAD_AVERAGE = Gauge(PREFIX + 'nvr_cpu_load_average', 'Load average of the NVR CPU', ['name'])
+NVR_CPU_TEMPERATURE = Gauge(PREFIX + 'nvr_cpu_temperature','Temperature in Celsius of the NVR CPU', ['name'])
+NVR_MEMORY_TOTAL = Gauge(PREFIX + 'nvr_memory_total', 'Total NVR memory', ['name'])
+NVR_MEMORY_AVAILABLE = Gauge(PREFIX + 'nvr_memory_available', 'Available NVR memory', ['name'])
+NVR_MEMORY_FREE = Gauge(PREFIX + 'nvr_memory_free', 'Free NVR memory', ['name'])
 
+NVR_STORAGE_SIZE = Gauge(PREFIX + 'nvr_storage_size_total', 'Total NVR storage size', ['name', 'type'])
+NVR_STORAGE_AVAILABLE = Gauge(PREFIX + 'nvr_storage_available_total', 'Total Available NVR storage', ['name', 'type'])
+NVR_STORAGE_USED = Gauge(PREFIX + 'nvr_storage_used_total', 'Total used NVR storage', ['name', 'type'])
+NVR_STORAGE_INFO = Gauge(PREFIX + 'nvr_storage_info', 'Information about NVR storage devices', ['nvr', 'model', 'size', 'healthy'])
 
 @REQUEST_TIME.time()
 async def get_data(session):
@@ -52,15 +61,43 @@ async def get_data(session):
 async def extract_metrics(data):
     json = await data.json()
     nvr = json['nvr']
+    name = nvr['name']
 
     # NVR info metrics
     NVR_INFO.labels(
             version=nvr['version'],
             mac=nvr['mac'],
             host=nvr['host'],
-            name=nvr['name'],
+            name=name,
             firmware=nvr['firmwareVersion']
             ).set(1)
+
+    # systemInfo metrics
+    sys = nvr['systemInfo']
+    cpu = sys['cpu']
+    memory = sys['memory']
+    storage = sys['storage']
+    storage_type = storage['type']
+
+    NVR_CPU_LOAD_AVERAGE.labels(name).set(cpu['averageLoad'])
+    NVR_CPU_TEMPERATURE.labels(name).set(cpu['temperature'])
+
+    NVR_MEMORY_TOTAL.labels(name).set(memory['total'])
+    NVR_MEMORY_AVAILABLE.labels(name).set(memory['available'])
+    NVR_MEMORY_FREE.labels(name).set(memory['free'])
+
+    NVR_STORAGE_SIZE.labels(name, storage_type).set(storage['size'])
+    NVR_STORAGE_AVAILABLE.labels(name, storage_type).set(storage['available'])
+    NVR_STORAGE_USED.labels(name, storage_type).set(storage['used'])
+
+    for device in storage['devices']:
+        NVR_STORAGE_INFO.labels(
+                nvr=name,
+                model=device['model'],
+                size=device['size'],
+                healthy=int(device['healthy'])
+                ).set(1)
+
 
 
 async def looper(interval):
