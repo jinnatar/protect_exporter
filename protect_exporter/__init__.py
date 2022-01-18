@@ -53,6 +53,15 @@ NVR_STORAGE_AVAILABLE = Gauge(PREFIX + 'nvr_storage_available_total', 'Total Ava
 NVR_STORAGE_USED = Gauge(PREFIX + 'nvr_storage_used_total', 'Total used NVR storage', ['name', 'type'])
 NVR_STORAGE_INFO = Gauge(PREFIX + 'nvr_storage_info', 'Information about NVR storage devices', ['nvr', 'model', 'size', 'healthy'])
 
+CAMERA_INFO = Gauge(PREFIX + 'camera_info', 'General camera information', ['id', 'mac', 'host', 'ip', 'type', 'name', 'hardware_revision', 'firmware', 'build'])
+CAMERA_CONNECTED = Gauge(PREFIX + 'camera_connected', 'Is the camera connected', ['name', 'id'])
+CAMERA_UP_TIMESTAMP = Gauge(PREFIX + 'camera_up_timestamp', 'When the camera last booted', ['name', 'id'])
+CAMERA_CONNECTED_TIMESTAMP = Gauge(PREFIX + 'camera_connected_timestamp', 'When the camera last connected', ['name', 'id'])
+CAMERA_SEEN_TIMESTAMP = Gauge(PREFIX + 'camera_seen_timestamp', 'When the camera was last seen', ['name', 'id'])
+CAMERA_CONNECTION_SPEED = Gauge(PREFIX + 'camera_connection_speed', 'Physical interface speed of camera', ['name', 'id'])
+CAMERA_CONNECTION_RX = Gauge(PREFIX + 'camera_connection_received_total', 'Total bytes received', ['name', 'id'])
+CAMERA_CONNECTION_TX = Gauge(PREFIX + 'camera_connection_transmitted_total', 'Total bytes transmitted', ['name', 'id'])
+
 @REQUEST_TIME.time()
 async def get_data(session):
     return await session.get(FLAGS.url + '/proxy/protect/api/bootstrap')
@@ -98,6 +107,40 @@ async def extract_metrics(data):
                 healthy=int(device['healthy'])
                 ).set(1)
 
+    # Camera info metrics
+    for camera in json['cameras']:
+        id=camera['id']
+        name=camera['name']
+        CAMERA_INFO.labels(
+            id=id,
+            mac=camera['mac'],
+            host=camera['connectionHost'],
+            ip=camera['host'],
+            type=camera['type'],
+            name=name,
+            hardware_revision=camera['hardwareRevision'],
+            firmware=camera['firmwareVersion'],
+            build=camera['firmwareBuild'],
+            ).set(1)
+
+        if camera['state'] == 'CONNECTED':
+            connected = 1
+        else:
+            connected = 0
+        CAMERA_CONNECTED.labels(name, id).set(connected)
+
+        if camera['upSince']:
+            CAMERA_UP_TIMESTAMP.labels(name, id).set(camera['upSince'])
+        if camera['connectedSince']:
+            CAMERA_CONNECTED_TIMESTAMP.labels(name, id).set(camera['connectedSince'])
+        if camera['lastSeen']:
+            CAMERA_SEEN_TIMESTAMP.labels(name, id).set(camera['lastSeen'])
+        if camera['wiredConnectionState']['phyRate']:
+            CAMERA_CONNECTION_SPEED.labels(name, id).set(camera['wiredConnectionState']['phyRate'])
+        elif camera['stats']['wifi']['linkSpeedMbps']:
+            CAMERA_CONNECTION_SPEED.labels(name, id).set(camera['stats']['wifi']['linkSpeedMbps'])
+        CAMERA_CONNECTION_RX.labels(name, id).set(camera['stats']['rxBytes'])
+        CAMERA_CONNECTION_TX.labels(name, id).set(camera['stats']['txBytes'])
 
 
 async def looper(interval):
