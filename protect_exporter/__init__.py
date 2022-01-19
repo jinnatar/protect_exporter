@@ -130,11 +130,11 @@ async def extract_metrics(data):
         CAMERA_CONNECTED.labels(name, id).set(connected)
 
         if camera['upSince']:
-            CAMERA_UP_TIMESTAMP.labels(name, id).set(camera['upSince'])
+            CAMERA_UP_TIMESTAMP.labels(name, id).set(camera['upSince'] * 0.001)
         if camera['connectedSince']:
-            CAMERA_CONNECTED_TIMESTAMP.labels(name, id).set(camera['connectedSince'])
+            CAMERA_CONNECTED_TIMESTAMP.labels(name, id).set(camera['connectedSince'] * 0.001)
         if camera['lastSeen']:
-            CAMERA_SEEN_TIMESTAMP.labels(name, id).set(camera['lastSeen'])
+            CAMERA_SEEN_TIMESTAMP.labels(name, id).set(camera['lastSeen'] * 0.001)
         if camera['wiredConnectionState']['phyRate']:
             CAMERA_CONNECTION_SPEED.labels(name, id).set(camera['wiredConnectionState']['phyRate'])
         elif camera['stats']['wifi']['linkSpeedMbps']:
