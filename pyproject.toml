@@ -1,20 +1,21 @@
 [tool.poetry]
 name = "protect_exporter"
-version = "0.1.0"
+version = "0.1.1"
 description = "Export UniFi Protect metrics to Prometheus"
-authors = ["Artanicus <artanicus@nocturnal.fi>"]
+authors = ["Jinna Kiisuo <jinna+git@nocturnal.fi>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8.1"
 absl-py = "^1.0.0"
-requests = "^2.27.1"
 prometheus-client = "^0.12.0"
 asyncio = "^3.4.3"
 aiohttp = "^3.8.1"
 
-[tool.poetry.dev-dependencies]
-bumpversion = "^0.6.0"
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.5.1"
+flake8 = "^6.1.0"
+black = "^23.7.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -22,3 +23,14 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 protect_exporter = 'protect_exporter:run'
+
+[tool.mypy]
+follow_imports = "silent"
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "absl"
+ignore_missing_imports = true
+[[tool.mypy.overrides]]
+module = "prometheus_client"
+ignore_missing_imports = true
