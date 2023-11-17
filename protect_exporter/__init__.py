@@ -1,8 +1,9 @@
-from absl import app, flags, logging
-import os
 import asyncio
+import os
+
 import aiohttp
-from prometheus_client import start_http_server, Summary, Gauge
+from absl import app, flags, logging
+from prometheus_client import Gauge, Summary, start_http_server
 
 FLAGS = flags.FLAGS
 
