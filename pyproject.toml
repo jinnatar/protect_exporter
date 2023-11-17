@@ -1,14 +1,14 @@
 [tool.poetry]
 name = "protect_exporter"
-version = "0.1.1"
+version = "0.1.2"
 description = "Export UniFi Protect metrics to Prometheus"
 authors = ["Jinna Kiisuo <jinna+git@nocturnal.fi>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.8.1"
-absl-py = "^1.0.0"
-prometheus-client = "^0.12.0"
+absl-py = "^2.0.0"
+prometheus-client = "^0.13.0"
 asyncio = "^3.4.3"
 aiohttp = "^3.8.5"
 
