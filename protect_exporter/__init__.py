@@ -159,11 +159,16 @@ async def extract_metrics(data):
     NVR_STORAGE_USED.labels(name, storage_type).set(storage["used"])
 
     for device in storage["devices"]:
+        healthy = 0
+        if "healthy" in device and (
+            device["healthy"] == "good" or device["healthy"] == "1"
+        ):
+            healthy = 1
         NVR_STORAGE_INFO.labels(
             nvr=name,
             model=device["model"],
             size=device["size"],
-            healthy=int(device["healthy"]),
+            healthy=healthy,
         ).set(1)
 
     # Camera info metrics
