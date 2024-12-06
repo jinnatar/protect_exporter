@@ -4,6 +4,7 @@ import os
 import aiohttp
 from absl import app, flags, logging
 from prometheus_client import Gauge, Summary, start_http_server
+from http.cookies import SimpleCookie
 
 FLAGS = flags.FLAGS
 
@@ -122,13 +123,19 @@ CAMERA_CONNECTION_TX = Gauge(
 
 @REQUEST_TIME.time()
 async def get_data(session):
+    logging.debug("Session cookie_jar:")
+    for cookie in session.cookie_jar:
+        logging.debug(f"Cookie: {cookie}")
     return await session.get(FLAGS.url + "/proxy/protect/api/bootstrap")
 
 
 @PROCESS_TIME.time()
 async def extract_metrics(data):
     json = await data.json()
-    nvr = json["nvr"]
+    try:
+        nvr = json["nvr"]
+    except KeyError:
+        raise KeyError(f"Failed to extract NVR data: {json}")
     name = nvr["name"]
 
     # NVR info metrics
@@ -217,9 +224,17 @@ async def looper(interval):
     login_data = {"username": FLAGS.username, "password": FLAGS.password}
 
     async with aiohttp.ClientSession() as session:
-        await session.post(FLAGS.url + "/api/auth/login", json=login_data)
+        response = await session.post(FLAGS.url + "/api/auth/login", data=login_data)
+        # Protect sends non-standard cookies with the 'partitioned' field which
+        # are not slated for support until the unreleased python 3.13.
+        # so we handle it very manually.
+        cookie = SimpleCookie()
+        logging.debug(f"Cookie header: {response.headers['Set-Cookie']}")
+        cookie.load(response.headers["Set-Cookie"].replace("partitioned", ""))
+        logging.debug(f"Extracted cookie: {cookie}")
+        session.cookie_jar.update_cookies(cookie)
 
-        logging.info(f"Querying every {interval} seconds")
+        logging.info(f"Querying every {interval} seconds.")
         while True:
             data = await get_data(session)
             await extract_metrics(data)
