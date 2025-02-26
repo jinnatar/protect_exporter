@@ -1,4 +1,4 @@
-from prometheus_client import Gauge, Summary, start_http_server
+from prometheus_client import Gauge, Summary
 
 # Metrics related to the exporter itself
 REQUEST_TIME = Summary("data_retrieve_seconds", "Time spent collecting the data")

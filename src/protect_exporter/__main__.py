@@ -2,7 +2,7 @@ import asyncio
 from http.cookies import SimpleCookie
 
 import aiohttp
-from absl import app, flags, logging
+from absl import app, logging
 from prometheus_client import start_http_server
 
 from . import FLAGS, metrics
