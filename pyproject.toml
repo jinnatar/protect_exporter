@@ -16,9 +16,10 @@ dependencies = [
     "prometheus-client<1.0.0,>=0.13.0",
     "asyncio<4.0.0,>=3.4.3",
     "aiohttp<4.0,>=3.11",
+    "uiprotect>=7.5.1",
 ]
 name = "protect_exporter"
-version = "0.2.2"
+version = "0.3.0"
 description = "Export UniFi Protect metrics to Prometheus"
 
 [project.scripts]
@@ -28,6 +29,9 @@ protect_exporter = "protect_exporter.__main__:run"
 dev = [
     "flake8<7.0.0,>=6.1.0",
     "isort<6.0.0,>=5.12.0",
-    "pyright<2.0.0,>=1.1.343",
+    "basedpyright<2.0.0,>=1.27.1",
     "black<25.0.0,>=24.3.0",
 ]
+
+[tool.basedpyright]
+allowedUntypedLibraries = ["absl"]

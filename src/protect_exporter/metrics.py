@@ -1,4 +1,10 @@
+from typing import TypeAlias
+
+from absl import logging
 from prometheus_client import Gauge, Summary
+from uiprotect.data import Bootstrap
+
+JSON: TypeAlias = None | bool | int | float | str | list["JSON"] | dict[str, "JSON"]
 
 # Metrics related to the exporter itself
 REQUEST_TIME = Summary("data_retrieve_seconds", "Time spent collecting the data")
@@ -83,94 +89,82 @@ CAMERA_CONNECTION_TX = Gauge(
     ["name", "id"],
 )
 
-REQUEST_TIME.time()
 
-
-async def extract_metrics(data):
-    json = await data.json()
-    try:
-        nvr = json["nvr"]
-    except KeyError:
-        raise KeyError(f"Failed to extract NVR data: {json}")
-    name = nvr["name"]
+@REQUEST_TIME.time()
+def extract_metrics(response: Bootstrap) -> None:
+    logging.debug(f"Bootstrap: {response}")
+    nvr = response.nvr
+    name: str = nvr.name or "Unknown"
 
     # NVR info metrics
     NVR_INFO.labels(
-        version=nvr["version"],
-        mac=nvr["mac"],
-        host=nvr["host"],
+        version=nvr.version,
+        mac=nvr.mac,
+        host=nvr.host,
         name=name,
-        firmware=nvr["firmwareVersion"],
+        firmware=nvr.firmware_version,
     ).set(1)
 
     # systemInfo metrics
-    sys = nvr["systemInfo"]
-    cpu = sys["cpu"]
-    memory = sys["memory"]
-    storage = sys["storage"]
-    storage_type = storage["type"]
+    sys = nvr.system_info
+    cpu = sys.cpu
 
-    NVR_CPU_LOAD_AVERAGE.labels(name).set(cpu["averageLoad"])
-    NVR_CPU_TEMPERATURE.labels(name).set(cpu["temperature"])
+    NVR_CPU_LOAD_AVERAGE.labels(name).set(cpu.average_load)
+    NVR_CPU_TEMPERATURE.labels(name).set(cpu.temperature)
 
-    NVR_MEMORY_TOTAL.labels(name).set(memory["total"])
-    NVR_MEMORY_AVAILABLE.labels(name).set(memory["available"])
-    NVR_MEMORY_FREE.labels(name).set(memory["free"])
+    memory = sys.memory
+    NVR_MEMORY_TOTAL.labels(name).set(memory.total or 0)
+    NVR_MEMORY_AVAILABLE.labels(name).set(memory.available or 0)
+    NVR_MEMORY_FREE.labels(name).set(memory.free or 0)
 
-    NVR_STORAGE_SIZE.labels(name, storage_type).set(storage["size"])
-    NVR_STORAGE_AVAILABLE.labels(name, storage_type).set(storage["available"])
-    NVR_STORAGE_USED.labels(name, storage_type).set(storage["used"])
+    storage = sys.storage
+    storage_type = storage.type.value
+    NVR_STORAGE_SIZE.labels(name, storage_type).set(storage.size)
+    NVR_STORAGE_AVAILABLE.labels(name, storage_type).set(storage.available)
+    NVR_STORAGE_USED.labels(name, storage_type).set(storage.used)
 
-    for device in storage["devices"]:
-        healthy = 0
-        if "healthy" in device and (
-            device["healthy"] == "good" or device["healthy"] == "1"
-        ):
-            healthy = 1
+    for device in storage.devices:
         NVR_STORAGE_INFO.labels(
             nvr=name,
-            model=device["model"],
-            size=device["size"],
-            healthy=healthy,
+            model=device.model,
+            size=device.size,
+            healthy=1 if device.healthy else 0,
         ).set(1)
 
     # Camera info metrics
-    for camera in json["cameras"]:
-        id = camera["id"]
-        name = camera["name"]
+    for camera in response.cameras.values():
+        id = camera.id
+        name = camera.name or "Unknown"
         CAMERA_INFO.labels(
             id=id,
-            mac=camera["mac"],
-            host=camera["connectionHost"],
-            ip=camera["host"],
-            type=camera["type"],
+            mac=camera.mac,
+            host=camera.connection_host,
+            ip=camera.host,
+            type=camera.type,
             name=name,
-            hardware_revision=camera["hardwareRevision"],
-            firmware=camera["firmwareVersion"],
-            build=camera["firmwareBuild"],
+            hardware_revision=camera.hardware_revision,
+            firmware=camera.firmware_version,
+            build=camera.firmware_build,
         ).set(1)
 
-        if camera["state"] == "CONNECTED":
-            connected = 1
-        else:
-            connected = 0
+        connected = 1 if camera.state == "CONNECTED" else 0
         CAMERA_CONNECTED.labels(name, id).set(connected)
 
-        if camera["upSince"]:
-            CAMERA_UP_TIMESTAMP.labels(name, id).set(camera["upSince"] * 0.001)
-        if camera["connectedSince"]:
+        if camera.up_since:
+            CAMERA_UP_TIMESTAMP.labels(name, id).set(camera.up_since.timestamp())
+        if camera.connected_since:
             CAMERA_CONNECTED_TIMESTAMP.labels(name, id).set(
-                camera["connectedSince"] * 0.001
+                camera.connected_since.timestamp()
             )
-        if camera["lastSeen"]:
-            CAMERA_SEEN_TIMESTAMP.labels(name, id).set(camera["lastSeen"] * 0.001)
-        if camera["wiredConnectionState"]["phyRate"]:
+        if camera.last_seen:
+            CAMERA_SEEN_TIMESTAMP.labels(name, id).set(camera.last_seen.timestamp())
+        if camera.wired_connection_state and camera.wired_connection_state.phy_rate:
             CAMERA_CONNECTION_SPEED.labels(name, id).set(
-                camera["wiredConnectionState"]["phyRate"]
+                camera.wired_connection_state.phy_rate
             )
-        elif camera["stats"]["wifi"]["linkSpeedMbps"]:
+        elif camera.stats.wifi.link_speed_mbps:
             CAMERA_CONNECTION_SPEED.labels(name, id).set(
-                camera["stats"]["wifi"]["linkSpeedMbps"]
+                float(camera.stats.wifi.link_speed_mbps)
             )
-        CAMERA_CONNECTION_RX.labels(name, id).set(camera["stats"]["rxBytes"])
-        CAMERA_CONNECTION_TX.labels(name, id).set(camera["stats"]["txBytes"])
+        CAMERA_CONNECTION_RX.labels(name, id).set(camera.stats.rx_bytes)
+        CAMERA_CONNECTION_TX.labels(name, id).set(camera.stats.tx_bytes)

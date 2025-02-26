@@ -1,47 +1,36 @@
 import asyncio
-from http.cookies import SimpleCookie
 
-import aiohttp
 from absl import app, logging
 from prometheus_client import start_http_server
+from uiprotect import ProtectApiClient
+from uiprotect.data import Bootstrap
 
 from . import FLAGS, metrics
 
 
-@metrics.REQUEST_TIME.time()
-async def get_data(session):
-    logging.debug("Session cookie_jar:")
-    for cookie in session.cookie_jar:
-        logging.debug(f"Cookie: {cookie}")
-    return await session.get(FLAGS.url + "/proxy/protect/api/bootstrap")
+async def looper(interval: int) -> None:
+    protect = ProtectApiClient(
+        FLAGS.protect_host,
+        FLAGS.protect_port,
+        FLAGS.username,
+        FLAGS.password,
+        verify_ssl=FLAGS.verify_ssl,
+    )
+    bootstrap: Bootstrap = await protect.update()
+    logging.info(f"Found NVR: {bootstrap.nvr.name}")
+    logging.info(f"Starting update loop with interval: {FLAGS.interval}s")
 
-
-async def looper(interval):
-    login_data = {"username": FLAGS.username, "password": FLAGS.password}
-
-    async with aiohttp.ClientSession() as session:
-        response = await session.post(FLAGS.url + "/api/auth/login", data=login_data)
-        # Protect sends non-standard cookies with the 'partitioned' field which
-        # are not slated for support until the unreleased python 3.13.
-        # so we handle it very manually.
-        cookie = SimpleCookie()
-        logging.debug(f"Cookie header: {response.headers['Set-Cookie']}")
-        cookie.load(response.headers["Set-Cookie"].replace("partitioned", ""))
-        logging.debug(f"Extracted cookie: {cookie}")
-        session.cookie_jar.update_cookies(cookie)
-
-        logging.info(f"Querying every {interval} seconds.")
-        while True:
-            data = await get_data(session)
-            await metrics.extract_metrics(data)
-            await asyncio.sleep(interval)
+    while True:
+        metrics.extract_metrics(bootstrap)
+        await asyncio.sleep(interval)
+        bootstrap = await protect.update()
 
 
 # Wrap asyncio.run for easy compatibilty with absl.app
-def main(argv):
+def main(argv: list[str]):
     del argv
 
-    start_http_server(FLAGS.port)
+    _ = start_http_server(FLAGS.port)
     logging.info(f"Serving metrics at :{FLAGS.port}/metrics")
     asyncio.run(looper(FLAGS.interval))
 
