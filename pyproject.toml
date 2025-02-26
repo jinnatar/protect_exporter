@@ -22,7 +22,7 @@ version = "0.2.2"
 description = "Export UniFi Protect metrics to Prometheus"
 
 [project.scripts]
-protect_exporter = "protect_exporter:run"
+protect_exporter = "protect_exporter.__main__:run"
 
 [dependency-groups]
 dev = [
