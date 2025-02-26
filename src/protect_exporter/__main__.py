@@ -8,19 +8,6 @@ from prometheus_client import start_http_server
 from . import FLAGS, metrics
 
 
-def not_null(value):
-    return value is not None
-
-
-flags.register_validator(
-    "username", not_null, message="username must be set", flag_values=FLAGS
-)
-flags.register_validator(
-    "password", not_null, message="password must be set", flag_values=FLAGS
-)
-flags.register_validator("url", not_null, message="url must be set", flag_values=FLAGS)
-
-
 @metrics.REQUEST_TIME.time()
 async def get_data(session):
     logging.debug("Session cookie_jar:")

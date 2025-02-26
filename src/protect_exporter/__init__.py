@@ -19,3 +19,7 @@ flags.DEFINE_integer(
     os.getenv(f"{PREFIX}_INTERVAL", 60),
     "Interval in seconds for data polls",
 )
+
+flags.mark_flag_as_required('url')
+flags.mark_flag_as_required('username')
+flags.mark_flag_as_required('password')
