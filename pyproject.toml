@@ -16,7 +16,7 @@ dependencies = [
     "prometheus-client<1.0.0,>=0.13.0",
     "asyncio<4.0.0,>=3.4.3",
     "aiohttp<4.0,>=3.11",
-    "uiprotect>=7.5.1",
+    "uiprotect>=7.21.1",
 ]
 name = "protect_exporter"
 version = "0.3.0"
