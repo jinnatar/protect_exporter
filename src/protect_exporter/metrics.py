@@ -52,7 +52,6 @@ CAMERA_INFO = Gauge(
     [
         "id",
         "mac",
-        "host",
         "ip",
         "type",
         "name",
@@ -138,7 +137,6 @@ def extract_metrics(response: Bootstrap) -> None:
         CAMERA_INFO.labels(
             id=id,
             mac=camera.mac,
-            host=camera.connection_host,
             ip=camera.host,
             type=camera.type,
             name=name,
