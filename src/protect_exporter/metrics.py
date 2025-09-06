@@ -164,5 +164,9 @@ def extract_metrics(response: Bootstrap) -> None:
             CAMERA_CONNECTION_SPEED.labels(name, id).set(
                 float(camera.stats.wifi.link_speed_mbps)
             )
-        CAMERA_CONNECTION_RX.labels(name, id).set(camera.stats.rx_bytes)
-        CAMERA_CONNECTION_TX.labels(name, id).set(camera.stats.tx_bytes)
+        if camera.stats:
+            # These seem to have gone missing: https://github.com/uilibs/uiprotect/issues/584
+            if hasattr(camera.stats, 'rx_bytes'):
+                CAMERA_CONNECTION_RX.labels(name, id).set(camera.stats.rx_bytes)
+            if hasattr(camera.stats, 'tx_bytes'):
+                CAMERA_CONNECTION_TX.labels(name, id).set(camera.stats.tx_bytes)
