@@ -30,7 +30,7 @@ dev = [
     "flake8<7.0.0,>=6.1.0",
     "isort<6.0.0,>=5.12.0",
     "basedpyright<2.0.0,>=1.27.1",
-    "black<25.0.0,>=24.3.0",
+    "black>=26.3.1,<27.0.0",
 ]
 
 [tool.basedpyright]
