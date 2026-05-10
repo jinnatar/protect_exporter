@@ -43,7 +43,7 @@ NVR_STORAGE_USED = Gauge(
 NVR_STORAGE_INFO = Gauge(
     PREFIX + "nvr_storage_info",
     "Information about NVR storage devices",
-    ["nvr", "model", "size", "healthy"],
+    ["nvr", "slot", "model", "size", "healthy"],
 )
 
 CAMERA_INFO = Gauge(
@@ -52,7 +52,6 @@ CAMERA_INFO = Gauge(
     [
         "id",
         "mac",
-        "host",
         "ip",
         "type",
         "name",
@@ -123,13 +122,23 @@ def extract_metrics(response: Bootstrap) -> None:
     NVR_STORAGE_AVAILABLE.labels(name, storage_type).set(storage.available)
     NVR_STORAGE_USED.labels(name, storage_type).set(storage.used)
 
+    storage_slot = -1
     for device in storage.devices:
-        NVR_STORAGE_INFO.labels(
-            nvr=name,
-            model=device.model,
-            size=device.size,
-            healthy=1 if device.healthy else 0,
-        ).set(1)
+        storage_slot += 1
+        if device.healthy is not None:
+            model = device.model or "Unknown"
+            size = device.size or "0"
+            NVR_STORAGE_INFO.labels(
+                nvr=name,
+                slot=storage_slot,
+                model=model,
+                size=size,
+                healthy=1 if device.healthy else 0,
+            ).set(1)
+        else:
+            logging.warning(
+                f"Skipping undefined storage device in slot {storage_slot}: {device}"
+            )
 
     # Camera info metrics
     for camera in response.cameras.values():
@@ -138,7 +147,6 @@ def extract_metrics(response: Bootstrap) -> None:
         CAMERA_INFO.labels(
             id=id,
             mac=camera.mac,
-            host=camera.connection_host,
             ip=camera.host,
             type=camera.type,
             name=name,
@@ -166,5 +174,8 @@ def extract_metrics(response: Bootstrap) -> None:
             CAMERA_CONNECTION_SPEED.labels(name, id).set(
                 float(camera.stats.wifi.link_speed_mbps)
             )
-        CAMERA_CONNECTION_RX.labels(name, id).set(camera.stats.rx_bytes)
-        CAMERA_CONNECTION_TX.labels(name, id).set(camera.stats.tx_bytes)
+        if camera.stats:
+            if camera.stats.rx_bytes:
+                CAMERA_CONNECTION_RX.labels(name, id).set(camera.stats.rx_bytes)
+            if camera.stats.tx_bytes:
+                CAMERA_CONNECTION_TX.labels(name, id).set(camera.stats.tx_bytes)

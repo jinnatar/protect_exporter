@@ -38,6 +38,11 @@ _ = flags.DEFINE_integer(
     os.getenv(f"{PREFIX}_INTERVAL", 60),
     "Interval in seconds for data polls",
 )
+_ = flags.DEFINE_string(
+    "dump_path",
+    os.getenv(f"{PREFIX}_DUMP_PATH", None),
+    "Path where to dump the raw received data on every poll",
+)
 
 
 def not_null(value: str | int | None):
