@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 from absl import app, logging
 from prometheus_client import start_http_server
@@ -18,12 +19,21 @@ async def looper(interval: int) -> None:
     )
     bootstrap: Bootstrap = await protect.update()
     logging.info(f"Found NVR: {bootstrap.nvr.name}")
-    logging.info(f"Starting update loop with interval: {FLAGS.interval}s")
+    if FLAGS.dump_path:
+        dump(FLAGS.dump_path, bootstrap)
 
+    logging.info(f"Starting update loop with interval: {FLAGS.interval}s")
     while True:
         metrics.extract_metrics(bootstrap)
         await asyncio.sleep(interval)
         bootstrap = await protect.update()
+        if FLAGS.dump_path:
+            dump(FLAGS.dump_path, bootstrap)
+
+
+def dump(path: str, bootstrap: Bootstrap):
+    with open(path, "w") as f:
+        _ = f.write(json.dumps(bootstrap.model_dump(), default=str))
 
 
 # Wrap asyncio.run for easy compatibilty with absl.app
