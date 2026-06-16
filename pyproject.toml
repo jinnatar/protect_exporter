@@ -15,7 +15,7 @@ dependencies = [
     "absl-py<3.0.0,>=2.0.0",
     "prometheus-client<1.0.0,>=0.13.0",
     "asyncio<4.0.0,>=3.4.3",
-    "aiohttp>=3.14.0,<4.0",
+    "aiohttp>=3.14.1,<4.0",
     "uiprotect>=7.21.1",
 ]
 name = "protect_exporter"
